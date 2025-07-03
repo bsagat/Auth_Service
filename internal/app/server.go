@@ -1,8 +1,10 @@
 package app
 
 import (
+	"authService/internal/dal"
 	"authService/internal/domain"
 	"authService/internal/handler"
+	"authService/internal/service"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,9 +15,16 @@ import (
 func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	mux := http.NewServeMux()
 
-	authH := handler.NewAuthHandler()
+	UserDal := ConnectAdapters(cfg.Db, log)
 
-	mux.HandleFunc("GET /login", authH.Login)
+	tokenServ := service.NewTokenService(cfg.Secret, UserDal, cfg.RefreshTTL, cfg.AccessTTL, log)
+	authServ := service.NewAuthService(UserDal, tokenServ, log)
+
+	authH := handler.NewAuthHandler(authServ, tokenServ, log)
+
+	mux.HandleFunc("POST /login", authH.Login)
+	mux.HandleFunc("POST /register", authH.Register)
+	mux.HandleFunc("POST /isAdmin", authH.IsAdmin)
 
 	serv := http.Server{
 		Addr:    cfg.Addr,
@@ -23,10 +32,22 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	}
 
 	cleanup := func() {
-		// Do cleanup
+		UserDal.Db.Close()
+		serv.Close()
 	}
 
 	return &serv, cleanup
+}
+
+func ConnectAdapters(config domain.DatabaseConf, log *slog.Logger) *dal.UserDal {
+	db, err := dal.Connect(config)
+	if err != nil {
+		log.Error("Failed to connect database", "error", err)
+		os.Exit(1)
+	}
+
+	log.Info("Adapters connection finished...")
+	return dal.NewUserDal(db)
 }
 
 func StartServer(serv *http.Server, log *slog.Logger) {
@@ -40,6 +61,6 @@ func ListenShutdown(log *slog.Logger) {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	<-stop
-	log.Info("Shutdown signal received!")
+	sign := <-stop
+	log.Info("Shutdown signal received!", "signal", sign.String())
 }

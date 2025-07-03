@@ -2,7 +2,6 @@ package main
 
 import (
 	"authService/internal/app"
-	"log/slog"
 )
 
 func main() {
@@ -17,7 +16,4 @@ func main() {
 	go app.StartServer(serv, logger)
 
 	app.ListenShutdown(logger)
-	if err := serv.Close(); err != nil {
-		slog.Error("Failed to close server", "error", err)
-	}
 }
