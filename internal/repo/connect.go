@@ -1,4 +1,4 @@
-package dal
+package repo
 
 import (
 	"authService/internal/domain"
@@ -39,14 +39,14 @@ func Connect(config domain.DatabaseConf) (*sql.DB, error) {
 
 // Admin credentials registration
 func migrateAdmin(Db *sql.DB) error {
-	const op = "dal.migrateAdmin"
+	const op = "repo.migrateAdmin"
 
 	admin := domain.User{
-		Name:     os.Getenv("ADMIN_NAME"),
-		Password: os.Getenv("ADMIN_PASSWORD"),
-		Email:    os.Getenv("ADMIN_EMAIL"),
-		IsAdmin:  true,
+		Name:    os.Getenv("ADMIN_NAME"),
+		Email:   os.Getenv("ADMIN_EMAIL"),
+		IsAdmin: true,
 	}
+	admin.SetPassword(os.Getenv("ADMIN_PASSWORD"))
 
 	var count int
 	if err := Db.QueryRow(`SELECT COUNT(*) FROM Users;`).Scan(&count); err != nil {
@@ -58,7 +58,7 @@ func migrateAdmin(Db *sql.DB) error {
 	}
 
 	// Хешируем пароль
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(admin.GetPassword()), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("%s: failed to hash password: %w", op, err)
 	}

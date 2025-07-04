@@ -1,9 +1,10 @@
 package service
 
 import (
-	"authService/internal/dal"
 	"authService/internal/domain"
+	"authService/internal/repo"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,14 +13,14 @@ import (
 )
 
 type TokenService struct {
-	UserDal    *dal.UserDal
+	UserDal    *repo.UserDal
 	RefreshTTL time.Duration
 	AccessTTL  time.Duration
 	log        *slog.Logger
 	secret     string
 }
 
-func NewTokenService(secret string, UserDal *dal.UserDal, RefreshTTL time.Duration, AccessTTL time.Duration, log *slog.Logger) *TokenService {
+func NewTokenService(secret string, UserDal *repo.UserDal, RefreshTTL time.Duration, AccessTTL time.Duration, log *slog.Logger) *TokenService {
 	return &TokenService{
 		UserDal:    UserDal,
 		RefreshTTL: RefreshTTL,
@@ -34,13 +35,18 @@ func (s *TokenService) getSecret() string {
 }
 
 func (s *TokenService) GenerateTokens(user domain.User) (domain.TokenPair, error) {
+	const op = "TokenService.GenerateTokens"
+	log := s.log.With(
+		slog.String("op", op),
+	)
+
 	var signed []string
 	for _, claim := range []jwt.Claims{s.NewAccessClaim(user), s.NewRefreshClaim(user)} {
 		// Подпись каждого jwt токена
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 		signedToken, err := token.SignedString([]byte(s.getSecret()))
 		if err != nil {
-			s.log.Error("Failed to sign string", "error", err)
+			log.Error("Failed to sign string", "error", err)
 			return domain.TokenPair{}, err
 		}
 		signed = append(signed, signedToken)
@@ -55,7 +61,7 @@ func (s *TokenService) GenerateTokens(user domain.User) (domain.TokenPair, error
 
 func (s *TokenService) NewAccessClaim(user domain.User) jwt.Claims {
 	return jwt.MapClaims{
-		"user_id":    user.ID,
+		"ID":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
@@ -66,7 +72,7 @@ func (s *TokenService) NewAccessClaim(user domain.User) jwt.Claims {
 
 func (s *TokenService) NewRefreshClaim(user domain.User) jwt.Claims {
 	return jwt.MapClaims{
-		"user_id":    user.ID,
+		"ID":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
@@ -76,7 +82,7 @@ func (s *TokenService) NewRefreshClaim(user domain.User) jwt.Claims {
 }
 
 func (s *TokenService) Refresh(refreshToken string) (domain.TokenPair, int, error) {
-	const op = "AuthService.RefreshToken"
+	const op = "TokenService.RefreshToken"
 	log := s.log.With(
 		slog.String("op", op),
 	)
@@ -91,9 +97,9 @@ func (s *TokenService) Refresh(refreshToken string) (domain.TokenPair, int, erro
 	// Проверяем существует ли пользователь
 	user, err := s.UserDal.GetUser(claims.Email)
 	if err != nil {
-		if errors.Is(err, dal.ErrUserNotExist) {
+		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return domain.TokenPair{}, http.StatusBadRequest, dal.ErrUserNotExist
+			return domain.TokenPair{}, http.StatusUnauthorized, repo.ErrUserNotExist
 		}
 		log.Error("Failed to check user uniqueness", "error", err)
 		return domain.TokenPair{}, http.StatusInternalServerError, errors.New("failed to check user uniqueness")
@@ -107,12 +113,14 @@ func (s *TokenService) Refresh(refreshToken string) (domain.TokenPair, int, erro
 
 	return pair, http.StatusOK, nil
 }
+
 func (s *TokenService) Validate(token string) (domain.CustomClaims, error) {
 	parsedToken, err := jwt.ParseWithClaims(token, jwt.MapClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(s.getSecret()), nil
 	})
 	if err != nil {
-		return domain.CustomClaims{}, err
+		s.log.Error("Failed to parse with claims", "error", err)
+		return domain.CustomClaims{}, errors.New("token is invalid")
 	}
 
 	if !parsedToken.Valid {
@@ -125,28 +133,40 @@ func (s *TokenService) Validate(token string) (domain.CustomClaims, error) {
 	}
 
 	var claims domain.CustomClaims
+	var invOrMissingForm string = "invalid or missing '%s' in token claims"
 
 	// Извлекаем Email
 	if email, ok := mapClaims["email"].(string); ok {
 		claims.Email = email
 	} else {
-		return domain.CustomClaims{}, errors.New("invalid or missing 'email' in token claims")
+
+		return domain.CustomClaims{}, fmt.Errorf(invOrMissingForm, "email")
 	}
 
 	// Извлекаем Name
 	if name, ok := mapClaims["name"].(string); ok {
 		claims.Name = name
+	} else {
+		return domain.CustomClaims{}, fmt.Errorf(invOrMissingForm, "name")
 	}
 
 	// Извлекаем IsAdmin
 	if isAdmin, ok := mapClaims["is_admin"].(bool); ok {
 		claims.IsAdmin = isAdmin
+	} else {
+		return domain.CustomClaims{}, fmt.Errorf(invOrMissingForm, "is_admin")
+	}
+
+	if isRefresh, ok := mapClaims["is_refresh"].(bool); ok {
+		claims.IsRefresh = isRefresh
+	} else {
+		return domain.CustomClaims{}, fmt.Errorf(invOrMissingForm, "is_refresh")
 	}
 
 	// Извлекаем exp и проверяем время
 	expFloat, ok := mapClaims["exp"].(float64)
 	if !ok {
-		return domain.CustomClaims{}, errors.New("invalid or missing 'exp' in token claims")
+		return domain.CustomClaims{}, fmt.Errorf(invOrMissingForm, "exp")
 	}
 	expTime := time.Unix(int64(expFloat), 0)
 	claims.ExpiresAt = jwt.NewNumericDate(expTime)

@@ -19,9 +19,10 @@ type TokenPair struct {
 }
 
 type CustomClaims struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	IsAdmin  bool   `json:"is_admin"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	IsAdmin   bool   `json:"is_admin"`
+	IsRefresh bool   `json:"is_refresh"`
 	jwt.RegisteredClaims
 }

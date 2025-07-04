@@ -3,11 +3,19 @@ package domain
 import "time"
 
 type User struct {
-	ID         int       `json:"id"`
-	Name       string    `json:"name"`
-	Email      string    `json:"email"`
-	Password   string    `json:"password"`
+	ID         int    `json:"ID"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	password   string
 	Created_At time.Time `json:"created_at"`
 	Updated_At time.Time `json:"updated_at"`
 	IsAdmin    bool      `json:"is_admin"`
+}
+
+func (u *User) GetPassword() string {
+	return u.password
+}
+
+func (u *User) SetPassword(password string) {
+	u.password = password
 }

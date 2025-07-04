@@ -1,9 +1,9 @@
 package app
 
 import (
-	"authService/internal/dal"
 	"authService/internal/domain"
 	"authService/internal/handler"
+	"authService/internal/repo"
 	"authService/internal/service"
 	"log/slog"
 	"net/http"
@@ -19,12 +19,18 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 
 	tokenServ := service.NewTokenService(cfg.Secret, UserDal, cfg.RefreshTTL, cfg.AccessTTL, log)
 	authServ := service.NewAuthService(UserDal, tokenServ, log)
+	adminServ := service.NewAdminService(UserDal, tokenServ, log)
 
 	authH := handler.NewAuthHandler(authServ, tokenServ, log)
+	adminH := handler.NewAdminHandler(authServ, adminServ, log)
 
 	mux.HandleFunc("POST /login", authH.Login)
 	mux.HandleFunc("POST /register", authH.Register)
-	mux.HandleFunc("POST /isAdmin", authH.IsAdmin)
+	mux.HandleFunc("POST /refresh", authH.RefreshToken)
+	mux.HandleFunc("GET /isAdmin", authH.IsAdmin)
+
+	// Admin rights
+	mux.HandleFunc("GET /user/{id}", adminH.GetUser)
 
 	serv := http.Server{
 		Addr:    cfg.Addr,
@@ -39,15 +45,15 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	return &serv, cleanup
 }
 
-func ConnectAdapters(config domain.DatabaseConf, log *slog.Logger) *dal.UserDal {
-	db, err := dal.Connect(config)
+func ConnectAdapters(config domain.DatabaseConf, log *slog.Logger) *repo.UserDal {
+	db, err := repo.Connect(config)
 	if err != nil {
 		log.Error("Failed to connect database", "error", err)
 		os.Exit(1)
 	}
 
 	log.Info("Adapters connection finished...")
-	return dal.NewUserDal(db)
+	return repo.NewUserDal(db)
 }
 
 func StartServer(serv *http.Server, log *slog.Logger) {

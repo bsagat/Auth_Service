@@ -25,7 +25,7 @@ func NewAuthHandler(authServ *service.AuthService, tokenServ *service.TokenServi
 
 // Возвращает токен
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var user domain.User
+	var user LoginReq
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		h.log.Error("Failed to decode json", "error", err)
 		SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
@@ -39,12 +39,13 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.log.Info("User login finished")
 	SetTokenCookies(w, tokens)
-	w.WriteHeader(code)
+	SendMessage(w, code, "User login success")
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var user domain.User
+	var user RegisterReq
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		h.log.Error("Failed to decode json", "error", err)
 		SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
@@ -58,12 +59,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.log.Info("User registered", "user_id", userID)
+	ClearTokenCookies(w)
+
+	h.log.Info("User registered", "ID", userID)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(struct {
-		UserID int `json:"user_id"`
+		UserID int `json:"ID"`
 	}{
 		UserID: userID,
 	})
@@ -78,6 +81,7 @@ func (h *AuthHandler) IsAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Вызов основной логики
 	isAdmin, code, err := h.authServ.IsAdmin(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to check user role", "error", err)
@@ -112,24 +116,9 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.log.Info("Token has been refreshed")
 	SetTokenCookies(w, tokens)
 	w.WriteHeader(code)
-}
-
-func SendError(w http.ResponseWriter, err error, code int) error {
-	errMessage := struct {
-		Message string `json:"message"`
-	}{
-		Message: err.Error(),
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(&errMessage); err != nil {
-		slog.Error("Failed to send error", "error", err)
-		return err
-	}
-	return nil
 }
 
 func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair) {
@@ -150,5 +139,18 @@ func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair) {
 		Secure:   false, // Отправка только через HTTPS (если передача зашифрованая >>> включить)
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/refresh",
+	})
+}
+
+func ClearTokenCookies(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:   domain.Access,
+		Value:  "",
+		MaxAge: -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:   domain.Refresh,
+		Value:  "",
+		MaxAge: -1,
 	})
 }

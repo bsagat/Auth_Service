@@ -1,8 +1,8 @@
 package service
 
 import (
-	"authService/internal/dal"
 	"authService/internal/domain"
+	"authService/internal/repo"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -22,12 +22,12 @@ var (
 )
 
 type AuthService struct {
-	UserDal   *dal.UserDal
+	UserDal   *repo.UserDal
 	TokenServ *TokenService
 	log       *slog.Logger
 }
 
-func NewAuthService(UserDal *dal.UserDal, TokenServ *TokenService, log *slog.Logger) *AuthService {
+func NewAuthService(UserDal *repo.UserDal, TokenServ *TokenService, log *slog.Logger) *AuthService {
 	return &AuthService{
 		UserDal:   UserDal,
 		TokenServ: TokenServ,
@@ -53,20 +53,21 @@ func (s *AuthService) Login(email, password string) (domain.TokenPair, int, erro
 	// Проверяем существует ли пользователь
 	existUser, err := s.UserDal.GetUser(email)
 	if err != nil {
-		if errors.Is(err, dal.ErrUserNotExist) {
+		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return domain.TokenPair{}, http.StatusUnauthorized, dal.ErrUserNotExist
+			return domain.TokenPair{}, http.StatusUnauthorized, repo.ErrUserNotExist
 		}
 		log.Error("Failed to check user uniqueness", "error", err)
 		return domain.TokenPair{}, http.StatusInternalServerError, errors.New("failed to check user uniqueness")
 	}
 
 	// Сверяем пароли user-a и existing user-s с помощью compareHash
-	if err := bcrypt.CompareHashAndPassword([]byte(existUser.Password), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(existUser.GetPassword()), []byte(password)); err != nil {
 		log.Error("Invalid credentials", "error", err)
 		return domain.TokenPair{}, http.StatusUnauthorized, ErrInvalidCredentials
 	}
 
+	// Генерируем токены
 	tokens, err := s.TokenServ.GenerateTokens(existUser)
 	if err != nil {
 		log.Error("Failed to generate token", "error", err)
@@ -92,13 +93,13 @@ func (s *AuthService) Register(name, email, password string) (int, int, error) {
 	}
 
 	// Проверяем уникальный ли email
-	if user, err := s.UserDal.GetUser(email); err != nil && !errors.Is(err, dal.ErrUserNotExist) {
+	if user, err := s.UserDal.GetUser(email); err != nil && !errors.Is(err, repo.ErrUserNotExist) {
 		log.Error("Failed to check user uniqueness", "error", err)
 		return 0, http.StatusInternalServerError, errors.New("failed to check user uniqueness")
 	} else {
 		if user.ID != 0 {
 			log.Error("User email is not unique")
-			return 0, http.StatusBadRequest, errors.New("email is not unique")
+			return 0, http.StatusConflict, errors.New("email is not unique")
 		}
 	}
 
@@ -111,10 +112,10 @@ func (s *AuthService) Register(name, email, password string) (int, int, error) {
 
 	// Сохраняем нового пользователя
 	newUser := domain.User{
-		Name:     name,
-		Email:    email,
-		Password: string(hashedPass),
+		Name:  name,
+		Email: email,
 	}
+	newUser.SetPassword(string(hashedPass))
 
 	if err = s.UserDal.SaveUser(&newUser); err != nil {
 		log.Error("Failed to save user", "error", err)
@@ -141,9 +142,9 @@ func (s *AuthService) IsAdmin(token string) (bool, int, error) {
 	// Проверяем существует ли пользователь
 	existUser, err := s.UserDal.GetUser(claim.Email)
 	if err != nil {
-		if errors.Is(err, dal.ErrUserNotExist) {
+		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return false, http.StatusUnauthorized, dal.ErrUserNotExist
+			return false, http.StatusUnauthorized, repo.ErrUserNotExist
 		}
 		log.Error("Failed to check user uniqueness", "error", err)
 		return false, http.StatusInternalServerError, errors.New("failed to check user uniqueness")
@@ -176,7 +177,7 @@ func ValidateRegister(name, email, password string) error {
 	}
 
 	// Email check
-	if len(email) == 0 {
+	if len(email) == 0 || len(email) > 255 {
 		return ErrEmptyEmail
 	}
 
