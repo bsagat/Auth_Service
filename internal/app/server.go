@@ -10,10 +10,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	mux := http.NewServeMux()
+	SetSwagger(mux)
 
 	UserDal := ConnectAdapters(cfg.Db, log)
 
@@ -45,6 +48,25 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	}
 
 	return &serv, cleanup
+}
+
+func SetSwagger(mux *http.ServeMux) {
+	swaggerBytes, err := os.ReadFile("docs/swagger.json")
+	if err != nil {
+		slog.Error("Failed to read swagger docs", "error", err)
+		os.Exit(1)
+	}
+
+	mux.HandleFunc("GET /swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger.json"),
+	))
+	mux.HandleFunc("/swagger.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/openapi+json")
+		if _, err := w.Write(swaggerBytes); err != nil {
+			slog.Error("Failed to send swagger file", "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	})
 }
 
 func ConnectAdapters(config domain.DatabaseConf, log *slog.Logger) *repo.UserDal {

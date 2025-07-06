@@ -49,7 +49,13 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("User data fetch finished")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(&user); err != nil {
+	if err = json.NewEncoder(w).Encode(struct {
+		User     domain.User `json:"user"`
+		Password string      `json:"password"`
+	}{
+		User:     user,
+		Password: user.GetPassword(),
+	}); err != nil {
 		h.log.Error("Failed to send user data", "error", err)
 		SendError(w, errors.New("user data send error"), http.StatusInternalServerError)
 		return
