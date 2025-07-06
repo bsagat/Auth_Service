@@ -52,7 +52,7 @@ func SetConfig() *domain.Config {
 	return &cfg
 }
 
-// ParseConfig loads ENV/CLI with priority ENV >> CLI
+// ParseConfig loads ENV with priority ENV >> CLI
 func ParseConfig() {
 	flag.Parse()
 	if *helpF {
@@ -96,13 +96,13 @@ func ParseFlags() {
 
 func CheckAdminCredentials(args map[string]*string) error {
 	if len(*args["ADMIN_NAME"]) == 0 {
-		return errors.New("admin name is required in (ENV/CLI)")
+		return errors.New("admin name is required in (ENV)")
 	}
 	if len(*args["ADMIN_PASSWORD"]) == 0 {
-		return errors.New("admin password is required in (ENV/CLI)")
+		return errors.New("admin password is required in (ENV)")
 	}
 	if len(*args["ADMIN_EMAIL"]) == 0 {
-		return errors.New("admin email is required in (ENV/CLI)")
+		return errors.New("admin email is required in (ENV)")
 	}
 	return nil
 }
@@ -114,10 +114,7 @@ Flags:
 	--help 	   [ Shows help message ]
 	--port     [ Default auth service port number ]
 	--host     [ Default auth service host settings ]
-	--env      [ Application environment: local | dev | prod ]
-	--name 	   []
-	--password []
-	--email    []`
+	--env      [ Application environment: local | dev | prod ]`
 	fmt.Println(text)
 	os.Exit(0)
 }

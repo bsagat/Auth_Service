@@ -13,14 +13,14 @@ import (
 )
 
 type TokenService struct {
-	UserDal    *repo.UserDal
+	UserDal    domain.UserRepo
 	RefreshTTL time.Duration
 	AccessTTL  time.Duration
 	log        *slog.Logger
 	secret     string
 }
 
-func NewTokenService(secret string, UserDal *repo.UserDal, RefreshTTL time.Duration, AccessTTL time.Duration, log *slog.Logger) *TokenService {
+func NewTokenService(secret string, UserDal domain.UserRepo, RefreshTTL time.Duration, AccessTTL time.Duration, log *slog.Logger) *TokenService {
 	return &TokenService{
 		UserDal:    UserDal,
 		RefreshTTL: RefreshTTL,
@@ -41,7 +41,7 @@ func (s *TokenService) GenerateTokens(user domain.User) (domain.TokenPair, error
 	)
 
 	var signed []string
-	for _, claim := range []jwt.Claims{s.NewAccessClaim(user), s.NewRefreshClaim(user)} {
+	for _, claim := range []jwt.Claims{NewAccessClaim(user, s.AccessTTL), NewRefreshClaim(user, s.RefreshTTL)} {
 		// Подпись каждого jwt токена
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 		signedToken, err := token.SignedString([]byte(s.getSecret()))
@@ -59,25 +59,25 @@ func (s *TokenService) GenerateTokens(user domain.User) (domain.TokenPair, error
 	}, nil
 }
 
-func (s *TokenService) NewAccessClaim(user domain.User) jwt.Claims {
+func NewAccessClaim(user domain.User, accessTTL time.Duration) jwt.Claims {
 	return jwt.MapClaims{
 		"ID":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
 		"is_refresh": false,
-		"exp":        time.Now().Add(s.AccessTTL).Unix(),
+		"exp":        time.Now().Add(accessTTL).Unix(),
 	}
 }
 
-func (s *TokenService) NewRefreshClaim(user domain.User) jwt.Claims {
+func NewRefreshClaim(user domain.User, refreshTTL time.Duration) jwt.Claims {
 	return jwt.MapClaims{
 		"ID":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
 		"is_refresh": true,
-		"exp":        time.Now().Add(s.RefreshTTL).Unix(),
+		"exp":        time.Now().Add(refreshTTL).Unix(),
 	}
 }
 
@@ -120,11 +120,11 @@ func (s *TokenService) Validate(token string) (domain.CustomClaims, error) {
 	})
 	if err != nil {
 		s.log.Error("Failed to parse with claims", "error", err)
-		return domain.CustomClaims{}, errors.New("token is invalid")
+		return domain.CustomClaims{}, ErrInvalidToken
 	}
 
 	if !parsedToken.Valid {
-		return domain.CustomClaims{}, errors.New("token is invalid")
+		return domain.CustomClaims{}, ErrInvalidToken
 	}
 
 	mapClaims, ok := parsedToken.Claims.(jwt.MapClaims)

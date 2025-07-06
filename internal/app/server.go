@@ -27,10 +27,12 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	mux.HandleFunc("POST /login", authH.Login)
 	mux.HandleFunc("POST /register", authH.Register)
 	mux.HandleFunc("POST /refresh", authH.RefreshToken)
-	mux.HandleFunc("GET /isAdmin", authH.IsAdmin)
+	mux.HandleFunc("GET /role", authH.CheckRole)
 
 	// Admin rights
 	mux.HandleFunc("GET /user/{id}", adminH.GetUser)
+	mux.HandleFunc("PUT /user/{id}", adminH.UpdateUserName)
+	mux.HandleFunc("DELETE /uer/{id}", adminH.DeleteUser)
 
 	serv := http.Server{
 		Addr:    cfg.Addr,

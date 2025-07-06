@@ -54,7 +54,6 @@ func (repo *UserDal) SaveUser(user *domain.User) error {
 	}
 	return nil
 }
-
 func (repo *UserDal) DeleteUser(userID int) error {
 	const op = "UserDal.DeleteUser"
 	query := `

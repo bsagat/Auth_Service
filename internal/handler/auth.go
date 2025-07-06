@@ -72,7 +72,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *AuthHandler) IsAdmin(w http.ResponseWriter, r *http.Request) {
+func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	// Достаем access token
 	tokenCookie, err := r.Cookie(domain.Access)
 	if err != nil {
@@ -82,7 +82,7 @@ func (h *AuthHandler) IsAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вызов основной логики
-	isAdmin, code, err := h.authServ.IsAdmin(tokenCookie.Value)
+	existUser, code, err := h.authServ.RoleCheck(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to check user role", "error", err)
 		SendError(w, err, code)
@@ -90,15 +90,11 @@ func (h *AuthHandler) IsAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Возвращаем ответ
-	h.log.Info("User role check finished", "is_admin", isAdmin)
+	h.log.Info("User role check finished", "ID", existUser.ID, "is_admin", existUser.IsAdmin)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(struct {
-		IsAdmin bool `json:"is_admin"`
-	}{
-		IsAdmin: isAdmin,
-	})
+	_ = json.NewEncoder(w).Encode(&existUser)
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
