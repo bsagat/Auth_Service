@@ -40,7 +40,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.log.Info("User login finished")
-	SetTokenCookies(w, tokens)
+	SetTokenCookies(w, tokens, r.TLS != nil)
 	SendMessage(w, code, "User login success")
 }
 
@@ -113,26 +113,27 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.log.Info("Token has been refreshed")
-	SetTokenCookies(w, tokens)
+	SetTokenCookies(w, tokens, r.TLS != nil)
 	w.WriteHeader(code)
 }
 
-func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair) {
+func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair, hasTLS bool) {
+	ClearTokenCookies(w)
 	http.SetCookie(w, &http.Cookie{
 		Name:     domain.Access,
 		Value:    tokens.AccessToken,
-		Expires:  tokens.AccessExpiresAt,
+		Expires:  tokens.AccessExpiresAt.UTC(),
 		HttpOnly: true,
-		Secure:   false, // Отправка только через HTTPS (если передача зашифрованая >>> включить)
+		Secure:   hasTLS, // Отправка только через HTTPS (если передача зашифрованая >>> включить)
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/",
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     domain.Refresh,
 		Value:    tokens.RefreshToken,
-		Expires:  tokens.RefreshExpiresAt,
+		Expires:  tokens.RefreshExpiresAt.UTC(),
 		HttpOnly: true,
-		Secure:   false, // Отправка только через HTTPS (если передача зашифрованая >>> включить)
+		Secure:   hasTLS, // Отправка только через HTTPS (если передача зашифрованая >>> включить)
 		SameSite: http.SameSiteStrictMode,
 		Path:     "/refresh",
 	})

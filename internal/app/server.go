@@ -35,7 +35,7 @@ func SetRouter(cfg *domain.Config, log *slog.Logger) (*http.Server, func()) {
 	// Admin rights
 	mux.HandleFunc("GET /user/{id}", adminH.GetUser)
 	mux.HandleFunc("PUT /user/{id}", adminH.UpdateUserName)
-	mux.HandleFunc("DELETE /uer/{id}", adminH.DeleteUser)
+	mux.HandleFunc("DELETE /user/{id}", adminH.DeleteUser)
 
 	serv := http.Server{
 		Addr:    cfg.Addr,

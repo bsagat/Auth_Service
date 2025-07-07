@@ -3,7 +3,6 @@ package mock
 import (
 	"authService/internal/domain"
 	"authService/internal/repo"
-	"fmt"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -34,7 +33,6 @@ func (*MockUserRepo) GetUser(email string) (domain.User, error) {
 		Created_At: time.Now(),
 		Updated_At: time.Now(),
 	}
-	fmt.Println(user)
 	user.SetPassword(string(passHash))
 	return user, nil
 }
