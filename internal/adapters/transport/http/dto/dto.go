@@ -1,4 +1,4 @@
-package handler
+package dto
 
 // Data transfer objects
 type LoginReq struct {

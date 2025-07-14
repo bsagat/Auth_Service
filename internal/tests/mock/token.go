@@ -1,8 +1,8 @@
 package mock
 
 import (
-	"authService/internal/domain"
-	"authService/internal/service"
+	"auth/internal/domain"
+	"auth/internal/service"
 	"net/http"
 	"time"
 

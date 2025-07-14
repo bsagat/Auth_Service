@@ -1,4 +1,4 @@
-package app
+package logger
 
 import (
 	"log/slog"
@@ -10,6 +10,10 @@ const (
 	envDev   = "dev"
 	envProd  = "prod"
 )
+
+type Logger interface {
+	Info(msg string, args ...any)
+}
 
 func SetLogger(env string) *slog.Logger {
 	var log slog.Logger
@@ -24,4 +28,9 @@ func SetLogger(env string) *slog.Logger {
 	}
 
 	return &log
+}
+
+// Возвращает лог-обертку для ошибки
+func Err(err error) slog.Attr {
+	return slog.String("error", err.Error())
 }

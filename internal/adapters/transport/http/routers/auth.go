@@ -1,8 +1,10 @@
-package handler
+package routers
 
 import (
-	"authService/internal/domain"
-	"authService/internal/service"
+	"auth/internal/adapters/transport/http/dto"
+	"auth/internal/domain"
+	"auth/internal/service"
+	"auth/pkg/utils"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -25,37 +27,38 @@ func NewAuthHandler(authServ *service.AuthService, tokenServ *service.TokenServi
 
 // Возвращает токен
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var user LoginReq
+	var user dto.LoginReq
+
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		h.log.Error("Failed to decode json", "error", err)
-		SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
+		utils.SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
 		return
 	}
 
 	tokens, code, err := h.authServ.Login(user.Email, user.Password)
 	if err != nil {
 		h.log.Error("Failed to auth user", "error", err)
-		SendError(w, err, code)
+		utils.SendError(w, err, code)
 		return
 	}
 
 	h.log.Info("User login finished")
 	SetTokenCookies(w, tokens, r.TLS != nil)
-	SendMessage(w, code, "User login success")
+	utils.SendMessage(w, code, "User login success")
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var user RegisterReq
+	var user dto.RegisterReq
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		h.log.Error("Failed to decode json", "error", err)
-		SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
+		utils.SendError(w, errors.New("invalid JSON data"), http.StatusBadRequest)
 		return
 	}
 
 	userID, code, err := h.authServ.Register(user.Name, user.Email, user.Password)
 	if err != nil {
 		h.log.Error("Failed to register user", "error", err)
-		SendError(w, err, code)
+		utils.SendError(w, err, code)
 		return
 	}
 
@@ -77,7 +80,7 @@ func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	tokenCookie, err := r.Cookie(domain.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
-		SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
+		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
 		return
 	}
 
@@ -85,7 +88,7 @@ func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	existUser, code, err := h.authServ.RoleCheck(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to check user role", "error", err)
-		SendError(w, err, code)
+		utils.SendError(w, err, code)
 		return
 	}
 
@@ -101,14 +104,14 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	tokenCookie, err := r.Cookie(domain.Refresh)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
-		SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
+		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
 		return
 	}
 
 	tokens, code, err := h.tokenServ.Refresh(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to refresh token", "error", err)
-		SendError(w, err, code)
+		utils.SendError(w, err, code)
 		return
 	}
 

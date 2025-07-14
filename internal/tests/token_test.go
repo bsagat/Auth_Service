@@ -1,9 +1,9 @@
 package service
 
 import (
-	"authService/internal/domain"
-	"authService/internal/service"
-	"authService/internal/tests/mock"
+	"auth/internal/domain"
+	"auth/internal/service"
+	"auth/internal/tests/mock"
 	"log/slog"
 	"strings"
 	"testing"

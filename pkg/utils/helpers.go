@@ -1,10 +1,24 @@
-package handler
+package utils
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 )
+
+func ShowHelp() {
+	text :=
+		`Auth Service
+Flags:		
+	--help 	   [ Shows help message ]
+	--port     [ Default auth service port number ]
+	--host     [ Default auth service host settings ]
+	--env      [ Application environment: local | dev | prod ]`
+	fmt.Println(text)
+	os.Exit(0)
+}
 
 func SendMessage(w http.ResponseWriter, code int, message string) error {
 	w.Header().Set("Content-Type", "application/json")

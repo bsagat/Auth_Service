@@ -1,19 +1,25 @@
 package main
 
 import (
-	"authService/internal/app"
+	"auth/config"
+	"auth/internal/app"
+	"auth/pkg/logger"
+	"os"
 )
 
 func main() {
-	cfg := app.SetConfig()
 
-	logger := app.SetLogger(cfg.Env)
-	logger.Info("Logger setup finished...")
+	cfg := config.New()
 
-	serv, cleanup := app.SetRouter(cfg, logger)
-	defer cleanup()
+	log := logger.SetLogger(cfg.App.Env)
+	log.Info("Logger setup finished...")
 
-	go app.StartServer(serv, logger)
+	app, err := app.New(cfg, log)
+	if err != nil {
+		log.Error("Failed to setup application", logger.Err(err))
+		os.Exit(1)
+	}
+	defer app.CleanUp(log)
 
-	app.ListenShutdown(logger)
+	app.Start(log)
 }

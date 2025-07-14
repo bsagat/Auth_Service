@@ -1,8 +1,8 @@
 package service
 
 import (
-	"authService/internal/domain"
-	"authService/internal/repo"
+	"auth/internal/adapters/repo"
+	"auth/internal/domain"
 	"errors"
 	"fmt"
 	"log/slog"

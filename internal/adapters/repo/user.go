@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"authService/internal/domain"
+	"auth/internal/domain"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,6 +10,14 @@ import (
 var (
 	ErrUserNotExist = errors.New("user does not exist")
 )
+
+type UserDal struct {
+	Db *sql.DB
+}
+
+func NewUserDal(Db *sql.DB) *UserDal {
+	return &UserDal{Db: Db}
+}
 
 func (repo *UserDal) GetUser(email string) (domain.User, error) {
 	const op = "UserDal.GetUser"

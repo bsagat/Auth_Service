@@ -1,10 +1,10 @@
 package service
 
 import (
-	"authService/internal/domain"
-	"authService/internal/repo"
-	"authService/internal/service"
-	"authService/internal/tests/mock"
+	"auth/internal/adapters/repo"
+	"auth/internal/domain"
+	"auth/internal/service"
+	"auth/internal/tests/mock"
 	"fmt"
 	"log/slog"
 	"net/http"
