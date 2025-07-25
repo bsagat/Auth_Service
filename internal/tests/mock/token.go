@@ -1,9 +1,7 @@
 package mock
 
 import (
-	"auth/internal/domain"
-	"auth/internal/service"
-	"net/http"
+	"auth/internal/domain/models"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,25 +14,27 @@ func NewMockTokenService() *MockTokenService {
 	return &MockTokenService{}
 }
 
-func (s *MockTokenService) GenerateTokens(user domain.User) (domain.TokenPair, error) {
-	return domain.TokenPair{
+func (s *MockTokenService) GenerateTokens(user models.User) (models.TokenPair, error) {
+	return models.TokenPair{
 		AccessToken:      "accessToken",
 		AccessExpiresAt:  time.Now().Add(time.Minute * 15),
 		RefreshToken:     "refreshToken",
 		RefreshExpiresAt: time.Now().Add(time.Hour * 7),
 	}, nil
 }
-func (s *MockTokenService) NewAccessClaim(user domain.User) jwt.Claims {
+func (s *MockTokenService) NewAccessClaim(user models.User) jwt.Claims {
 	return jwt.MapClaims{}
 }
 
-func (s *MockTokenService) NewRefreshClaim(user domain.User) jwt.Claims {
+func (s *MockTokenService) NewRefreshClaim(user models.User) jwt.Claims {
 	return jwt.MapClaims{}
 }
-func (s *MockTokenService) Refresh(refreshToken string) (domain.TokenPair, int, error) {
-	return domain.TokenPair{}, http.StatusOK, nil
+
+func (s *MockTokenService) Refresh(refreshToken string) (models.TokenPair, error) {
+	return models.TokenPair{}, nil
 }
-func (s *MockTokenService) Validate(token string) (domain.CustomClaims, error) {
+
+func (s *MockTokenService) Validate(token string) (models.CustomClaims, error) {
 	s.getSecret()
 	isAdmin, isRefresh, email := false, false, "defaultEmail@gmail.com"
 	switch token {
@@ -44,12 +44,12 @@ func (s *MockTokenService) Validate(token string) (domain.CustomClaims, error) {
 	case "refresh":
 		isRefresh = true
 	case "invalidToken":
-		return domain.CustomClaims{}, service.ErrInvalidToken
+		return models.CustomClaims{}, models.ErrInvalidToken
 	case "notExistToken":
 		email = "uniqueMail@gmail.com"
 	}
 
-	return domain.CustomClaims{
+	return models.CustomClaims{
 		Name:      "testName",
 		Email:     email,
 		IsAdmin:   isAdmin,

@@ -2,7 +2,7 @@ package mock
 
 import (
 	"auth/internal/adapters/repo"
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -15,17 +15,17 @@ func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{}
 }
 
-func (*MockUserRepo) GetUser(email string) (domain.User, error) {
+func (*MockUserRepo) GetUser(email string) (models.User, error) {
 	passHash, _ := bcrypt.GenerateFromPassword([]byte("validPassword"), bcrypt.DefaultCost)
 	isAdmin := false
 	switch email {
 	case "adminEmail@gmail.com":
 		isAdmin = true
 	case "uniqueMail@gmail.com":
-		return domain.User{}, repo.ErrUserNotExist
+		return models.User{}, repo.ErrUserNotExist
 	}
 
-	user := domain.User{
+	user := models.User{
 		ID:         1,
 		Name:       "testName",
 		Email:      email,
@@ -37,7 +37,7 @@ func (*MockUserRepo) GetUser(email string) (domain.User, error) {
 	return user, nil
 }
 
-func (*MockUserRepo) SaveUser(user *domain.User) error {
+func (*MockUserRepo) SaveUser(user *models.User) error {
 	user.ID = 1
 	return nil
 }
@@ -48,4 +48,8 @@ func (*MockUserRepo) DeleteUser(userID int) error {
 
 func (*MockUserRepo) UpdateUserName(name string, userID int) error {
 	return nil
+}
+
+func (*MockUserRepo) GetUserByID(userID int) (models.User, error) {
+	return models.User{}, nil
 }

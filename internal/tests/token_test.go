@@ -1,7 +1,7 @@
 package service
 
 import (
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"auth/internal/service"
 	"auth/internal/tests/mock"
 	"log/slog"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestGenerateAndValidateTokens(t *testing.T) {
-	user := domain.User{
+	user := models.User{
 		ID:      1,
 		Name:    "Test User",
 		Email:   "test@example.com",
@@ -79,7 +79,7 @@ func TestRefresh_Success(t *testing.T) {
 		slog.Default(),
 	)
 
-	user := domain.User{
+	user := models.User{
 		ID:      1,
 		Name:    "Test User",
 		Email:   "test@example.com",
@@ -91,12 +91,9 @@ func TestRefresh_Success(t *testing.T) {
 		t.Fatalf("GenerateTokens error: %v", err)
 	}
 
-	refreshed, code, err := tokenService.Refresh(tokens.RefreshToken)
+	refreshed, err := tokenService.Refresh(tokens.RefreshToken)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
-	}
-	if code != 200 {
-		t.Errorf("expected status 200, got %v", code)
 	}
 	if refreshed.AccessToken == "" || refreshed.RefreshToken == "" {
 		t.Errorf("expected non-empty tokens, got %+v", refreshed)
@@ -113,7 +110,7 @@ func TestRefresh_UserNotExist(t *testing.T) {
 		slog.Default(),
 	)
 
-	user := domain.User{
+	user := models.User{
 		ID:      1,
 		Name:    "Test User",
 		Email:   "uniqueMail@gmail.com",
@@ -125,11 +122,8 @@ func TestRefresh_UserNotExist(t *testing.T) {
 		t.Fatalf("GenerateTokens error: %v", err)
 	}
 
-	_, code, err := tokenService.Refresh(tokens.RefreshToken)
+	_, err = tokenService.Refresh(tokens.RefreshToken)
 	if err == nil {
 		t.Fatal("expected error for non-existing user, got nil")
-	}
-	if code != 401 {
-		t.Errorf("expected status 401, got %v", code)
 	}
 }
