@@ -1,7 +1,7 @@
 package repo
 
 import (
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -19,7 +19,7 @@ func NewUserDal(Db *sql.DB) *UserDal {
 	return &UserDal{Db: Db}
 }
 
-func (repo *UserDal) GetUser(email string) (domain.User, error) {
+func (repo *UserDal) GetUser(email string) (models.User, error) {
 	const op = "UserDal.GetUser"
 	query := `
 	SELECT 
@@ -32,14 +32,41 @@ func (repo *UserDal) GetUser(email string) (domain.User, error) {
 		1
 	`
 
-	var user domain.User
+	var user models.User
 	var passHash string
 	if err := repo.Db.QueryRow(query, email).
 		Scan(&user.ID, &user.Name, &user.Email, &passHash, &user.IsAdmin, &user.Created_At, &user.Updated_At); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return domain.User{}, fmt.Errorf("%s:%w", op, ErrUserNotExist)
+			return models.User{}, fmt.Errorf("%s:%w", op, ErrUserNotExist)
 		}
-		return domain.User{}, fmt.Errorf("%s:%w", op, err)
+		return models.User{}, fmt.Errorf("%s:%w", op, err)
+	}
+	user.SetPassword(passHash)
+
+	return user, nil
+}
+
+func (repo *UserDal) GetUserByID(userID int) (models.User, error) {
+	const op = "UserDal.GetUser"
+	query := `
+	SELECT 
+		ID, Name, Email, PassHash, IsAdmin, Created_At, Coalesce(Updated_At,Created_At) 
+	FROM   
+		Users
+	WHERE
+		ID=$1
+	LIMIT 
+		1
+	`
+
+	var user models.User
+	var passHash string
+	if err := repo.Db.QueryRow(query, userID).
+		Scan(&user.ID, &user.Name, &user.Email, &passHash, &user.IsAdmin, &user.Created_At, &user.Updated_At); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return models.User{}, fmt.Errorf("%s:%w", op, ErrUserNotExist)
+		}
+		return models.User{}, fmt.Errorf("%s:%w", op, err)
 	}
 	user.SetPassword(passHash)
 
@@ -47,7 +74,7 @@ func (repo *UserDal) GetUser(email string) (domain.User, error) {
 }
 
 // Saves user and sets his ID
-func (repo *UserDal) SaveUser(user *domain.User) error {
+func (repo *UserDal) SaveUser(user *models.User) error {
 	const op = "UserDal.SaveUser"
 	query := `
 	INSERT INTO Users (Name, Email, PassHash, IsAdmin)

@@ -2,11 +2,12 @@ package routers
 
 import (
 	"auth/internal/adapters/transport/http/dto"
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"auth/internal/service"
 	"auth/pkg/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -27,7 +28,7 @@ func NewAdminHandler(authServ *service.AuthService, adminServ *service.AdminServ
 }
 
 func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	adminToken, err := r.Cookie(domain.Access)
+	adminToken, err := r.Cookie(models.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
 		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
@@ -41,10 +42,10 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, code, err := h.adminServ.GetUser(userID, adminToken.Value)
+	user, err := h.adminServ.GetUser(userID, adminToken.Value)
 	if err != nil {
 		h.log.Error("Failed to get user", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
@@ -52,7 +53,7 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(struct {
-		User     domain.User `json:"user"`
+		User     models.User `json:"user"`
 		Password string      `json:"password"`
 	}{
 		User:     user,
@@ -65,7 +66,7 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	adminToken, err := r.Cookie(domain.Access)
+	adminToken, err := r.Cookie(models.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
 		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
@@ -79,19 +80,18 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := h.adminServ.DeleteUser(userID, adminToken.Value)
-	if err != nil {
+	if err := h.adminServ.DeleteUser(userID, adminToken.Value); err != nil {
 		h.log.Error("Failed to delete user", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
 	h.log.Info("User deleted succesfully", "ID", userID)
-	utils.SendMessage(w, code, "User deleted succesfully")
+	utils.SendMessage(w, http.StatusNoContent, "User deleted succesfully")
 }
 
 func (h *AdminHandler) UpdateUserName(w http.ResponseWriter, r *http.Request) {
-	adminToken, err := r.Cookie(domain.Access)
+	adminToken, err := r.Cookie(models.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
 		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
@@ -105,16 +105,22 @@ func (h *AdminHandler) UpdateUserName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code, err := h.adminServ.UpdateUser(domain.User{
+	// Валидируем запрос
+	if err := ValidateUserReq(userReq); err != nil {
+		h.log.Error("Update request is invalid", "error", err)
+		utils.SendError(w, fmt.Errorf("update request is invalid: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	if err := h.adminServ.UpdateUser(models.User{
 		ID:   userReq.ID,
 		Name: userReq.Name,
-	}, adminToken.Value)
-	if err != nil {
+	}, adminToken.Value); err != nil {
 		h.log.Error("Failed to update user", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
 	h.log.Info("User deleted succesfully", "ID", userReq.ID)
-	utils.SendMessage(w, code, "User updated succesfully")
+	utils.SendMessage(w, http.StatusOK, "User updated succesfully")
 }

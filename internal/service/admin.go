@@ -2,11 +2,9 @@ package service
 
 import (
 	"auth/internal/adapters/repo"
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"errors"
-	"fmt"
 	"log/slog"
-	"net/http"
 )
 
 type AdminService struct {
@@ -23,7 +21,7 @@ func NewAdminService(UserDal *repo.UserDal, TokenServ *TokenService, log *slog.L
 	}
 }
 
-func (s *AdminService) GetUser(userID int, access string) (domain.User, int, error) {
+func (s *AdminService) GetUser(userID int, access string) (models.User, error) {
 	const op = "AdminService.GetUser"
 	log := s.log.With(
 		slog.String("op", op),
@@ -34,30 +32,30 @@ func (s *AdminService) GetUser(userID int, access string) (domain.User, int, err
 	claims, err := s.TokenServ.Validate(access)
 	if err != nil {
 		log.Error("Access token is invalid", "error", err)
-		return domain.User{}, http.StatusUnauthorized, err
+		return models.User{}, models.ErrInvalidToken
 	}
 
 	// Проверяем права пользователя
 	if !claims.IsAdmin {
 		log.Error("User is not administrator")
-		return domain.User{}, http.StatusForbidden, errors.New("permission denied")
+		return models.User{}, models.ErrPermissionDenied
 	}
 
 	// Получаем user-а
-	existUser, err := s.UserDal.GetUser(claims.Email)
+	existUser, err := s.UserDal.GetUserByID(userID)
 	if err != nil {
 		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return domain.User{}, http.StatusNotFound, repo.ErrUserNotExist
+			return models.User{}, repo.ErrUserNotExist
 		}
 		log.Error("Failed to check user uniqueness", "error", err)
-		return domain.User{}, http.StatusInternalServerError, errors.New("failed to check user uniqueness")
+		return models.User{}, models.ErrUnexpected
 	}
 
-	return existUser, http.StatusOK, nil
+	return existUser, nil
 }
 
-func (s *AdminService) DeleteUser(userID int, access string) (int, error) {
+func (s *AdminService) DeleteUser(userID int, access string) error {
 	const op = "AdminService.DeleteUser"
 	log := s.log.With(
 		slog.String("op", op),
@@ -68,28 +66,32 @@ func (s *AdminService) DeleteUser(userID int, access string) (int, error) {
 	claims, err := s.TokenServ.Validate(access)
 	if err != nil {
 		log.Error("Access token is invalid", "error", err)
-		return http.StatusUnauthorized, err
+		return models.ErrInvalidToken
 	}
 
 	// Проверяем права пользователя
 	if !claims.IsAdmin {
 		log.Error("User is not administrator")
-		return http.StatusForbidden, errors.New("permission denied")
+		return models.ErrPermissionDenied
+	}
+
+	if claims.ID == userID {
+		return models.ErrCannotDeleteSelf
 	}
 
 	// Удаляем пользователя
 	if err := s.UserDal.DeleteUser(userID); err != nil {
 		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return http.StatusNotFound, err
+			return repo.ErrUserNotExist
 		}
 		log.Error("Failed to delete user data", "error", err)
-		return http.StatusInternalServerError, err
+		return models.ErrUnexpected
 	}
-	return http.StatusNoContent, nil
+	return nil
 }
 
-func (s *AdminService) UpdateUser(user domain.User, access string) (int, error) {
+func (s *AdminService) UpdateUser(user models.User, access string) error {
 	const op = "AdminService.UpdateUser"
 	log := s.log.With(
 		slog.String("op", op),
@@ -97,23 +99,17 @@ func (s *AdminService) UpdateUser(user domain.User, access string) (int, error) 
 		slog.String("name", user.Name),
 	)
 
-	// Валидируем запрос
-	if err := ValidateUpdateUser(user); err != nil {
-		log.Error("Update request is invalid", "error", err)
-		return http.StatusBadRequest, err
-	}
-
 	// Валидируем токен
 	claims, err := s.TokenServ.Validate(access)
 	if err != nil {
 		log.Error("Access token is invalid", "error", err)
-		return http.StatusUnauthorized, err
+		return models.ErrInvalidToken
 	}
 
 	// Проверяем права пользователя
 	if !claims.IsAdmin {
 		log.Error("User is not administrator")
-		return http.StatusForbidden, errors.New("permission denied")
+		return models.ErrPermissionDenied
 	}
 
 	// Пока что обновляем name
@@ -121,21 +117,11 @@ func (s *AdminService) UpdateUser(user domain.User, access string) (int, error) 
 	if err := s.UserDal.UpdateUserName(user.Name, user.ID); err != nil {
 		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
-			return http.StatusNotFound, err
+			return repo.ErrUserNotExist
 		}
 		log.Error("Failed to delete user data", "error", err)
-		return http.StatusInternalServerError, err
+		return models.ErrUnexpected
 	}
 
-	return http.StatusOK, nil
-}
-
-func ValidateUpdateUser(user domain.User) error {
-	if user.ID == 0 {
-		return fmt.Errorf("user id field is reqired")
-	}
-	if len(user.Name) == 0 {
-		return errors.New("user id field is reqired")
-	}
 	return nil
 }

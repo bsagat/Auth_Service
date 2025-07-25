@@ -61,6 +61,16 @@
               }
             }
           },
+          "404": {
+            "description": "User is not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Server unexpected error",
             "content": {
@@ -203,6 +213,16 @@
               }
             }
           },
+          "404": {
+            "description": "User is not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Server unexpected error",
             "content": {
@@ -256,6 +276,16 @@
           },
           "401": {
             "description": "Cookie not found or unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
             "content": {
               "application/json": {
                 "schema": {
@@ -349,6 +379,16 @@
               }
             }
           },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "User not found",
             "content": {
@@ -388,18 +428,12 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "User deleted successfully",
+          "204": {
+            "description": "User deleted succesfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "User deleted successfully"
-                    }
-                  }
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -424,8 +458,28 @@
               }
             }
           },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Admin cannot delete themselve",
             "content": {
               "application/json": {
                 "schema": {
@@ -492,7 +546,7 @@
           "ID": {
             "type": "integer"
           },
-          "Name": {
+          "name": {
             "type": "string"
           }
         },

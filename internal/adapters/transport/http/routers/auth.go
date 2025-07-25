@@ -2,7 +2,7 @@ package routers
 
 import (
 	"auth/internal/adapters/transport/http/dto"
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"auth/internal/service"
 	"auth/pkg/utils"
 	"encoding/json"
@@ -35,16 +35,23 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, code, err := h.authServ.Login(user.Email, user.Password)
+	// Валидация реквизитов
+	if err := ValidateCredentials("valid Name", user.Email, user.Password); err != nil {
+		h.log.Error("Email address is invalid")
+		utils.SendError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	tokens, err := h.authServ.Login(user.Email, user.Password)
 	if err != nil {
 		h.log.Error("Failed to auth user", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
 	h.log.Info("User login finished")
 	SetTokenCookies(w, tokens, r.TLS != nil)
-	utils.SendMessage(w, code, "User login success")
+	utils.SendMessage(w, http.StatusOK, "User login success")
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
@@ -55,10 +62,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, code, err := h.authServ.Register(user.Name, user.Email, user.Password)
+	// Валидация реквизитов
+	if err := ValidateCredentials(user.Name, user.Email, user.Password); err != nil {
+		h.log.Error("Email address is invalid")
+		utils.SendError(w, err, http.StatusBadRequest)
+		return
+	}
+
+	userID, err := h.authServ.Register(user.Name, user.Email, user.Password)
 	if err != nil {
 		h.log.Error("Failed to register user", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
@@ -67,7 +81,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("User registered", "ID", userID)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(struct {
 		UserID int `json:"ID"`
 	}{
@@ -77,7 +91,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	// Достаем access token
-	tokenCookie, err := r.Cookie(domain.Access)
+	tokenCookie, err := r.Cookie(models.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
 		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
@@ -85,10 +99,10 @@ func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Вызов основной логики
-	existUser, code, err := h.authServ.RoleCheck(tokenCookie.Value)
+	existUser, err := h.authServ.RoleCheck(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to check user role", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
@@ -101,29 +115,29 @@ func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
-	tokenCookie, err := r.Cookie(domain.Refresh)
+	tokenCookie, err := r.Cookie(models.Refresh)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
 		utils.SendError(w, errors.New("cookie not found"), http.StatusUnauthorized)
 		return
 	}
 
-	tokens, code, err := h.tokenServ.Refresh(tokenCookie.Value)
+	tokens, err := h.tokenServ.Refresh(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to refresh token", "error", err)
-		utils.SendError(w, err, code)
+		utils.SendError(w, err, utils.GetStatus(err))
 		return
 	}
 
 	h.log.Info("Token has been refreshed")
 	SetTokenCookies(w, tokens, r.TLS != nil)
-	w.WriteHeader(code)
+	w.WriteHeader(http.StatusOK)
 }
 
-func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair, hasTLS bool) {
+func SetTokenCookies(w http.ResponseWriter, tokens models.TokenPair, hasTLS bool) {
 	ClearTokenCookies(w)
 	http.SetCookie(w, &http.Cookie{
-		Name:     domain.Access,
+		Name:     models.Access,
 		Value:    tokens.AccessToken,
 		Expires:  tokens.AccessExpiresAt.UTC(),
 		HttpOnly: true,
@@ -132,7 +146,7 @@ func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair, hasTLS bool
 		Path:     "/",
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:     domain.Refresh,
+		Name:     models.Refresh,
 		Value:    tokens.RefreshToken,
 		Expires:  tokens.RefreshExpiresAt.UTC(),
 		HttpOnly: true,
@@ -144,12 +158,12 @@ func SetTokenCookies(w http.ResponseWriter, tokens domain.TokenPair, hasTLS bool
 
 func ClearTokenCookies(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:   domain.Access,
+		Name:   models.Access,
 		Value:  "",
 		MaxAge: -1,
 	})
 	http.SetCookie(w, &http.Cookie{
-		Name:   domain.Refresh,
+		Name:   models.Refresh,
 		Value:  "",
 		MaxAge: -1,
 	})

@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"auth/internal/domain"
+	"auth/internal/domain/models"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -54,7 +54,7 @@ func Connect(cfg DatabaseConf, adminCreds AdminCredentials) (*PostgreDB, error) 
 func migrateAdmin(Db *sql.DB, cred AdminCredentials) error {
 	const op = "repo.migrateAdmin"
 
-	admin := domain.User{
+	admin := models.User{
 		Name:    cred.Name,
 		Email:   cred.Email,
 		IsAdmin: true,

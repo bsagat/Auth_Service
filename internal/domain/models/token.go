@@ -1,4 +1,4 @@
-package domain
+package models
 
 import (
 	"time"
@@ -19,6 +19,7 @@ type TokenPair struct {
 }
 
 type CustomClaims struct {
+	ID        int    `json:"ID"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Password  string `json:"password"`

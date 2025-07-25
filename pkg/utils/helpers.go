@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"auth/internal/adapters/repo"
+	"auth/internal/domain/models"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -47,4 +50,19 @@ func SendError(w http.ResponseWriter, err error, code int) error {
 		return err
 	}
 	return nil
+}
+
+func GetStatus(err error) int {
+	switch {
+	case errors.Is(err, models.ErrInvalidToken), errors.Is(err, models.ErrInvalidCredentials):
+		return http.StatusUnauthorized
+	case errors.Is(err, models.ErrPermissionDenied):
+		return http.StatusForbidden
+	case errors.Is(err, repo.ErrUserNotExist):
+		return http.StatusNotFound
+	case errors.Is(err, models.ErrNotUniqueEmail), errors.Is(err, models.ErrCannotDeleteSelf):
+		return http.StatusConflict
+	default:
+		return http.StatusInternalServerError
+	}
 }
