@@ -90,7 +90,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	utils.SendMessage(w, http.StatusNoContent, "User deleted succesfully")
 }
 
-func (h *AdminHandler) UpdateUserName(w http.ResponseWriter, r *http.Request) {
+func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	adminToken, err := r.Cookie(models.Access)
 	if err != nil {
 		h.log.Error("Failed to get cookie", "error", err)
@@ -115,6 +115,7 @@ func (h *AdminHandler) UpdateUserName(w http.ResponseWriter, r *http.Request) {
 	if err := h.adminServ.UpdateUser(models.User{
 		ID:   userReq.ID,
 		Name: userReq.Name,
+		Role: userReq.Role,
 	}, adminToken.Value); err != nil {
 		h.log.Error("Failed to update user", "error", err)
 		utils.SendError(w, err, utils.GetStatus(err))

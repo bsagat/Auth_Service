@@ -6,6 +6,7 @@ import (
 	"auth/internal/domain/models"
 	"auth/internal/service"
 	"auth/internal/tests/mock"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,7 @@ func TestValidateCredentials(t *testing.T) {
 		name             string
 		userName         string
 		email            string
+		role             string
 		password         string
 		expectedHTTPcode int
 		expectedErr      error
@@ -26,6 +28,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "empty email",
 			userName:    "New User",
 			email:       "",
+			role:        models.UserRole,
 			password:    "password",
 			expectedErr: models.ErrInvalidEmail,
 		},
@@ -33,6 +36,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "empty password",
 			userName:    "New User",
 			email:       "email@gmail.com",
+			role:        models.UserRole,
 			password:    "",
 			expectedErr: models.ErrEmptyPassword,
 		},
@@ -40,6 +44,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "short password, less than 8",
 			userName:    "New User",
 			email:       "email@gmail.com",
+			role:        models.UserRole,
 			password:    "short",
 			expectedErr: models.ErrInvalidPassword,
 		},
@@ -47,6 +52,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "long password, more than 72",
 			userName:    "New User",
 			email:       "email@gmail.com",
+			role:        models.UserRole,
 			password:    strings.Repeat("password", 10),
 			expectedErr: models.ErrInvalidPassword,
 		},
@@ -54,6 +60,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "validLogin",
 			userName:    "New User",
 			email:       "defaultEmail@gmail.com",
+			role:        models.UserRole,
 			password:    "validPassword",
 			expectedErr: nil,
 		},
@@ -61,6 +68,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "empty name",
 			userName:    "",
 			password:    "password",
+			role:        models.UserRole,
 			email:       "uniqueMail@gmail.com",
 			expectedErr: models.ErrEmptyName,
 		},
@@ -68,6 +76,7 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "short name",
 			userName:    "123",
 			password:    "password",
+			role:        models.UserRole,
 			email:       "uniqueMail@gmail.com",
 			expectedErr: models.ErrInvalidName,
 		},
@@ -75,16 +84,25 @@ func TestValidateCredentials(t *testing.T) {
 			name:        "very long name, more than 72",
 			userName:    strings.Repeat("123456789", 9),
 			password:    "password",
+			role:        models.UserRole,
 			email:       "uniqueMail@gmail.com",
 			expectedErr: models.ErrInvalidName,
+		},
+		{
+			name:        "not exist role",
+			userName:    "New User",
+			email:       "defaultEmail@gmail.com",
+			password:    "password",
+			role:        "neverExistUserRoleEver",
+			expectedErr: models.ErrInvalidRole,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := routers.ValidateCredentials(tc.userName, tc.email, tc.password)
-			if err != tc.expectedErr {
+			err := routers.ValidateCredentials(tc.userName, tc.email, tc.password, tc.role)
+			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("expected error = %v, got error = %v, err = %v", tc.expectedErr, err != nil, err)
 			}
 		})
@@ -122,7 +140,7 @@ func TestLogin(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := authServ.Login(tc.email, tc.password)
-			if err != tc.expectedErr {
+			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("expected error = %v, got error = %v, err = %v", tc.expectedErr, err != nil, err)
 			}
 		})
@@ -135,6 +153,7 @@ func TestRegister(t *testing.T) {
 		userName         string
 		email            string
 		password         string
+		role             string
 		expectedHTTPcode int
 		expectedErr      error
 	}{
@@ -143,11 +162,21 @@ func TestRegister(t *testing.T) {
 			userName:    "user name",
 			email:       "ExistMail@gmail.com",
 			password:    "password",
+			role:        models.UserRole,
 			expectedErr: models.ErrNotUniqueEmail,
+		},
+		{
+			name:        "admin registration",
+			userName:    "New admin",
+			role:        models.AdminRole,
+			email:       "uniqueMail@gmail.com",
+			password:    "validPassword",
+			expectedErr: models.ErrCannotCreateAdmin,
 		},
 		{
 			name:        "valid registration",
 			userName:    "New User",
+			role:        models.UserRole,
 			email:       "uniqueMail@gmail.com",
 			password:    "validPassword",
 			expectedErr: nil,
@@ -157,8 +186,8 @@ func TestRegister(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := authServ.Register(tc.userName, tc.email, tc.password)
-			if err != tc.expectedErr {
+			_, err := authServ.Register(tc.userName, tc.email, tc.password, tc.role)
+			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("expected error = %v, got error = %v, err = %v", tc.expectedErr, err != nil, err)
 			}
 		})
@@ -214,7 +243,7 @@ func TestCheckRole(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			user, err := authServ.RoleCheck(tc.token)
-			if err != tc.expectedErr {
+			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("expected error = %v, got error = %v, error = %v", tc.expectedErr, err != nil, err)
 			}
 			if err := EqualUsers(user, tc.expectedUser); err != nil {

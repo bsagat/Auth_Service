@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Auth Service API",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Simple JWT Cookie-based Authentication API",
     "contact": {
       "name": "Bsagat",
@@ -198,7 +198,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserRoleResponse"
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
@@ -266,101 +266,6 @@
           },
           "400": {
             "description": "Invalid user ID",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Cookie not found or unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "User not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update user name (Admin only)",
-        "description": "Updates user name by ID. Requires admin access token in cookie.",
-        "tags": [
-          "admin"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateUserReq"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "User updated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "example": "User updated successfully"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid user ID or JSON",
             "content": {
               "application/json": {
                 "schema": {
@@ -500,6 +405,93 @@
           }
         }
       }
+    },
+    "/user": {
+      "put": {
+        "summary": "Update user name (Admin only)",
+        "description": "Updates user name by ID. Requires admin access token in cookie.",
+        "tags": [
+          "admin"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "User updated successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid user ID or JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Cookie not found or unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server unexpected error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -509,10 +501,12 @@
         "properties": {
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "default": "defaultEmail@gmail.com"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "default": "hashed_password_string"
           }
         },
         "required": [
@@ -524,49 +518,57 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "UserName"
           },
           "email": {
             "type": "string",
-            "format": "email"
+            "format": "email",
+            "example": "defaultEmail@gmail.com"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "example": "hashed_password_string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
           }
         },
         "required": [
           "name",
           "email",
-          "password"
+          "password",
+          "role"
         ]
       },
       "UpdateUserReq": {
         "type": "object",
         "properties": {
           "ID": {
-            "type": "integer"
+            "type": "integer",
+            "example": 2
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "example": "NewUserName"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
           }
         },
         "required": [
           "ID",
-          "Name"
+          "Name",
+          "role"
         ]
-      },
-      "UserRoleResponse": {
-        "type": "object",
-        "properties": {
-          "ID": {
-            "type": "integer",
-            "example": 1
-          },
-          "IsAdmin": {
-            "type": "boolean",
-            "example": true
-          }
-        }
       },
       "UserWithPassword": {
         "type": "object",
@@ -586,11 +588,30 @@
           "ID": {
             "type": "integer"
           },
-          "Name": {
+          "name": {
             "type": "string"
           },
-          "Email": {
-            "type": "string"
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "is_admin": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ]
           }
         }
       },

@@ -10,6 +10,7 @@ type User struct {
 	Created_At time.Time `json:"created_at"`
 	Updated_At time.Time `json:"updated_at,omitempty"`
 	IsAdmin    bool      `json:"is_admin"`
+	Role       string    `json:"role"`
 }
 
 func (u *User) GetPassword() string {

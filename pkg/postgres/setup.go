@@ -58,6 +58,7 @@ func migrateAdmin(Db *sql.DB, cred AdminCredentials) error {
 		Name:    cred.Name,
 		Email:   cred.Email,
 		IsAdmin: true,
+		Role:    models.AdminRole,
 	}
 	admin.SetPassword(cred.Password)
 
@@ -78,9 +79,9 @@ func migrateAdmin(Db *sql.DB, cred AdminCredentials) error {
 
 	// Вставляем админа в таблицу
 	_, err = Db.Exec(`
-		INSERT INTO Users (Name, Email, Passhash, IsAdmin)
-		VALUES ($1, $2, $3, $4);
-	`, admin.Name, admin.Email, hashedPass, admin.IsAdmin)
+		INSERT INTO Users (Name, Email, Passhash, IsAdmin, Role)
+		VALUES ($1, $2, $3, $4, $5);
+	`, admin.Name, admin.Email, hashedPass, admin.IsAdmin, admin.Role)
 
 	if err != nil {
 		return fmt.Errorf("%s: failed to insert admin: %w", op, err)

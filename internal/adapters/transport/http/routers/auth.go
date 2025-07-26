@@ -36,7 +36,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидация реквизитов
-	if err := ValidateCredentials("valid Name", user.Email, user.Password); err != nil {
+	if err := ValidateCredentials("valid Name", user.Email, user.Password, models.UserRole); err != nil {
 		h.log.Error("Email address is invalid")
 		utils.SendError(w, err, http.StatusBadRequest)
 		return
@@ -63,13 +63,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидация реквизитов
-	if err := ValidateCredentials(user.Name, user.Email, user.Password); err != nil {
+	if err := ValidateCredentials(user.Name, user.Email, user.Password, user.Role); err != nil {
 		h.log.Error("Email address is invalid")
 		utils.SendError(w, err, http.StatusBadRequest)
 		return
 	}
 
-	userID, err := h.authServ.Register(user.Name, user.Email, user.Password)
+	userID, err := h.authServ.Register(user.Name, user.Email, user.Password, user.Role)
 	if err != nil {
 		h.log.Error("Failed to register user", "error", err)
 		utils.SendError(w, err, utils.GetStatus(err))

@@ -24,6 +24,7 @@ type CustomClaims struct {
 	Email     string `json:"email"`
 	Password  string `json:"password"`
 	IsAdmin   bool   `json:"is_admin"`
+	Role      string `json:"role"`
 	IsRefresh bool   `json:"is_refresh"`
 	jwt.RegisteredClaims
 }

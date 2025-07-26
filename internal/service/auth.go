@@ -60,7 +60,7 @@ func (s *AuthService) Login(email, password string) (models.TokenPair, error) {
 	return tokens, nil
 }
 
-func (s *AuthService) Register(name, email, password string) (int, error) {
+func (s *AuthService) Register(name, email, password, role string) (int, error) {
 	const op = "AuthService.Register"
 	log := s.log.With(
 		slog.String("op", op),
@@ -87,10 +87,16 @@ func (s *AuthService) Register(name, email, password string) (int, error) {
 		return 0, models.ErrUnexpected
 	}
 
+	if role == models.AdminRole {
+		log.Error("Attempt to create admin via API")
+		return 0, models.ErrCannotCreateAdmin
+	}
+
 	// Сохраняем нового пользователя
 	newUser := models.User{
 		Name:  name,
 		Email: email,
+		Role:  role,
 	}
 	newUser.SetPassword(string(hashedPass))
 

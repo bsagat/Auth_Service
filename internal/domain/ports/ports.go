@@ -7,7 +7,7 @@ type UserRepo interface {
 	GetUserByID(userID int) (models.User, error)
 	SaveUser(user *models.User) error
 	DeleteUser(userID int) error
-	UpdateUserName(name string, userID int) error
+	UpdateUser(name string, role string, userID int) error
 }
 
 type TokenService interface {

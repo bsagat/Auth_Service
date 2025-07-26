@@ -97,6 +97,7 @@ func (s *AdminService) UpdateUser(user models.User, access string) error {
 		slog.String("op", op),
 		slog.Int("ID", user.ID),
 		slog.String("name", user.Name),
+		slog.String("role", user.Role),
 	)
 
 	// Валидируем токен
@@ -112,9 +113,14 @@ func (s *AdminService) UpdateUser(user models.User, access string) error {
 		return models.ErrPermissionDenied
 	}
 
-	// Пока что обновляем name
+	if user.Role == models.AdminRole {
+		log.Error("Attempt to update role to admin via API")
+		return models.ErrCannotCreateAdmin
+	}
+
+	// Пока что обновляем name, role
 	// Можно полностью, когда будет доступен tokens-black-list
-	if err := s.UserDal.UpdateUserName(user.Name, user.ID); err != nil {
+	if err := s.UserDal.UpdateUser(user.Name, user.Role, user.ID); err != nil {
 		if errors.Is(err, repo.ErrUserNotExist) {
 			log.Error("User is not exist")
 			return repo.ErrUserNotExist

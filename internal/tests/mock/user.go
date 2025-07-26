@@ -46,7 +46,7 @@ func (*MockUserRepo) DeleteUser(userID int) error {
 	return nil
 }
 
-func (*MockUserRepo) UpdateUserName(name string, userID int) error {
+func (*MockUserRepo) UpdateUser(name, role string, userID int) error {
 	return nil
 }
 

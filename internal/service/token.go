@@ -66,6 +66,7 @@ func NewAccessClaim(user models.User, accessTTL time.Duration) jwt.Claims {
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
 		"is_refresh": false,
+		"role":       user.Role,
 		"exp":        time.Now().Add(accessTTL).Unix(),
 	}
 }
@@ -77,6 +78,7 @@ func NewRefreshClaim(user models.User, refreshTTL time.Duration) jwt.Claims {
 		"email":      user.Email,
 		"is_admin":   user.IsAdmin,
 		"is_refresh": true,
+		"role":       user.Role,
 		"exp":        time.Now().Add(refreshTTL).Unix(),
 	}
 }
@@ -140,6 +142,12 @@ func (s *TokenService) Validate(token string) (models.CustomClaims, error) {
 		claims.ID = int(Id)
 	} else {
 		return models.CustomClaims{}, fmt.Errorf(invOrMissingForm, "ID")
+	}
+
+	if role, ok := mapClaims["role"].(string); ok {
+		claims.Role = role
+	} else {
+		return models.CustomClaims{}, fmt.Errorf(invOrMissingForm, "role")
 	}
 
 	// Извлекаем Email

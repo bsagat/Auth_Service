@@ -62,6 +62,8 @@ func GetStatus(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, models.ErrNotUniqueEmail), errors.Is(err, models.ErrCannotDeleteSelf):
 		return http.StatusConflict
+	case errors.Is(err, models.ErrCannotCreateAdmin), errors.Is(err, models.ErrCannotDeleteSelf):
+		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
 	}

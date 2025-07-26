@@ -34,8 +34,8 @@ func New(cfg config.ServerConf, authServ *service.AuthService, adminServ *servic
 	mux.HandleFunc("GET /role", authH.CheckRole)
 
 	// Admin rights
+	mux.HandleFunc("PUT /user", adminH.UpdateUser)
 	mux.HandleFunc("GET /user/{id}", adminH.GetUser)
-	mux.HandleFunc("PUT /user/{id}", adminH.UpdateUserName)
 	mux.HandleFunc("DELETE /user/{id}", adminH.DeleteUser)
 
 	serv := &http.Server{
