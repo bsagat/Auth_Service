@@ -2,7 +2,7 @@ package service
 
 import (
 	"auth/internal/adapters/repo"
-	"auth/internal/adapters/transport/http/routers"
+	validate "auth/internal/adapters/transport"
 	"auth/internal/domain/models"
 	"auth/internal/service"
 	"auth/internal/tests/mock"
@@ -101,7 +101,7 @@ func TestValidateCredentials(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			err := routers.ValidateCredentials(tc.userName, tc.email, tc.password, tc.role)
+			err := validate.Credentials(tc.userName, tc.email, tc.password, tc.role)
 			if !errors.Is(err, tc.expectedErr) {
 				t.Errorf("expected error = %v, got error = %v, err = %v", tc.expectedErr, err != nil, err)
 			}
