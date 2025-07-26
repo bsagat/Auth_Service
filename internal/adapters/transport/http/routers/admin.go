@@ -1,6 +1,7 @@
 package routers
 
 import (
+	validate "auth/internal/adapters/transport"
 	"auth/internal/adapters/transport/http/dto"
 	"auth/internal/domain/models"
 	"auth/internal/service"
@@ -45,7 +46,7 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.adminServ.GetUser(userID, adminToken.Value)
 	if err != nil {
 		h.log.Error("Failed to get user", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
@@ -53,11 +54,9 @@ func (h *AdminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err = json.NewEncoder(w).Encode(struct {
-		User     models.User `json:"user"`
-		Password string      `json:"password"`
+		User models.User `json:"user"`
 	}{
-		User:     user,
-		Password: user.GetPassword(),
+		User: user,
 	}); err != nil {
 		h.log.Error("Failed to send user data", "error", err)
 		utils.SendError(w, errors.New("user data send error"), http.StatusInternalServerError)
@@ -82,7 +81,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.adminServ.DeleteUser(userID, adminToken.Value); err != nil {
 		h.log.Error("Failed to delete user", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
@@ -106,7 +105,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидируем запрос
-	if err := ValidateUserReq(userReq); err != nil {
+	if err := validate.UserReq(userReq.ID, userReq.Name, userReq.Role); err != nil {
 		h.log.Error("Update request is invalid", "error", err)
 		utils.SendError(w, fmt.Errorf("update request is invalid: %w", err), http.StatusBadRequest)
 		return
@@ -118,10 +117,10 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Role: userReq.Role,
 	}, adminToken.Value); err != nil {
 		h.log.Error("Failed to update user", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
-	h.log.Info("User deleted succesfully", "ID", userReq.ID)
+	h.log.Info("User updated succesfully", "ID", userReq.ID)
 	utils.SendMessage(w, http.StatusOK, "User updated succesfully")
 }

@@ -1,6 +1,7 @@
 package routers
 
 import (
+	validate "auth/internal/adapters/transport"
 	"auth/internal/adapters/transport/http/dto"
 	"auth/internal/domain/models"
 	"auth/internal/service"
@@ -36,8 +37,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидация реквизитов
-	if err := ValidateCredentials("valid Name", user.Email, user.Password, models.UserRole); err != nil {
-		h.log.Error("Email address is invalid")
+	if err := validate.Credentials("valid Name", user.Email, user.Password, models.UserRole); err != nil {
+		h.log.Error("Credentials are invalid")
 		utils.SendError(w, err, http.StatusBadRequest)
 		return
 	}
@@ -45,7 +46,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.authServ.Login(user.Email, user.Password)
 	if err != nil {
 		h.log.Error("Failed to auth user", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
@@ -63,8 +64,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Валидация реквизитов
-	if err := ValidateCredentials(user.Name, user.Email, user.Password, user.Role); err != nil {
-		h.log.Error("Email address is invalid")
+	if err := validate.Credentials(user.Name, user.Email, user.Password, user.Role); err != nil {
+		h.log.Error("Credentials are invalid")
 		utils.SendError(w, err, http.StatusBadRequest)
 		return
 	}
@@ -72,7 +73,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.authServ.Register(user.Name, user.Email, user.Password, user.Role)
 	if err != nil {
 		h.log.Error("Failed to register user", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *AuthHandler) CheckRole(w http.ResponseWriter, r *http.Request) {
 	existUser, err := h.authServ.RoleCheck(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to check user role", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 
@@ -125,7 +126,7 @@ func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.tokenServ.Refresh(tokenCookie.Value)
 	if err != nil {
 		h.log.Error("Failed to refresh token", "error", err)
-		utils.SendError(w, err, utils.GetStatus(err))
+		utils.SendError(w, err, utils.GetHTTpStatus(err))
 		return
 	}
 

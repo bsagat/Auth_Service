@@ -1,7 +1,6 @@
-package routers
+package validate
 
 import (
-	"auth/internal/adapters/transport/http/dto"
 	"auth/internal/domain/models"
 	"errors"
 	"fmt"
@@ -9,26 +8,22 @@ import (
 	"slices"
 )
 
-func ValidateUserReq(user dto.UpdateUserReq) error {
-	if user.ID == 0 {
+func UserReq(userID int, name, role string) error {
+	if userID == 0 {
 		return errors.New("user id field is reqired")
 	}
-	if len(user.Name) == 0 {
+	if len(name) == 0 {
 		return errors.New("user name field is reqired")
 	}
 
-	if len(user.Name) < 4 || len(user.Name) > 72 {
+	if len(name) < 4 || len(name) > 72 {
 		return models.ErrInvalidName
 	}
 
-	if len(user.Role) == 0 {
-		return errors.New("user role field is reqired")
-	}
-
-	return ValidateRole(user.Role)
+	return Role(role)
 }
 
-func ValidateCredentials(name, email, password, role string) error {
+func Credentials(name, email, password, role string) error {
 	// Name check
 	if len(name) == 0 {
 		return models.ErrEmptyName
@@ -53,14 +48,18 @@ func ValidateCredentials(name, email, password, role string) error {
 		return models.ErrInvalidPassword
 	}
 
-	if err := ValidateRole(role); err != nil {
+	if err := Role(role); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func ValidateRole(role string) error {
+func Role(role string) error {
+	if len(role) == 0 {
+		return errors.New("user role field is reqired")
+	}
+
 	if slices.Contains([]string{models.AdminRole, models.UserRole}, role) {
 		return nil
 	}

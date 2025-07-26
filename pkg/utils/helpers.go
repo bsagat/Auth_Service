@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+
+	"google.golang.org/grpc/codes"
 )
 
 func ShowHelp() {
@@ -52,7 +54,7 @@ func SendError(w http.ResponseWriter, err error, code int) error {
 	return nil
 }
 
-func GetStatus(err error) int {
+func GetHTTpStatus(err error) int {
 	switch {
 	case errors.Is(err, models.ErrInvalidToken), errors.Is(err, models.ErrInvalidCredentials):
 		return http.StatusUnauthorized
@@ -66,5 +68,22 @@ func GetStatus(err error) int {
 		return http.StatusBadRequest
 	default:
 		return http.StatusInternalServerError
+	}
+}
+
+func GetGRPCStatus(err error) codes.Code {
+	switch {
+	case errors.Is(err, models.ErrInvalidToken), errors.Is(err, models.ErrInvalidCredentials):
+		return codes.Unauthenticated
+	case errors.Is(err, models.ErrPermissionDenied):
+		return codes.PermissionDenied
+	case errors.Is(err, repo.ErrUserNotExist):
+		return codes.NotFound
+	case errors.Is(err, models.ErrNotUniqueEmail):
+		return codes.AlreadyExists
+	case errors.Is(err, models.ErrCannotCreateAdmin), errors.Is(err, models.ErrCannotDeleteSelf):
+		return codes.InvalidArgument
+	default:
+		return codes.Internal
 	}
 }

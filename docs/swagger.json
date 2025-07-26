@@ -259,7 +259,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserWithPassword"
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
@@ -569,18 +569,6 @@
           "Name",
           "role"
         ]
-      },
-      "UserWithPassword": {
-        "type": "object",
-        "properties": {
-          "user": {
-            "$ref": "#/components/schemas/User"
-          },
-          "password": {
-            "type": "string",
-            "example": "hashed_password_string"
-          }
-        }
       },
       "User": {
         "type": "object",

@@ -3,12 +3,14 @@ package app
 import (
 	"auth/config"
 	"auth/internal/adapters/repo"
+	grpcserver "auth/internal/adapters/transport/grpc"
 	httpserver "auth/internal/adapters/transport/http"
 	"auth/internal/service"
 	"auth/pkg/logger"
 	"auth/pkg/postgres"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,7 +21,7 @@ const serviceName = "auth"
 type App struct {
 	httpServer *httpserver.API
 	postgresDB *postgres.PostgreDB
-	// grpcServer *grpcserver.API
+	grpcServer *grpcserver.API
 }
 
 func New(cfg config.Config, log *slog.Logger) (*App, error) {
@@ -38,27 +40,41 @@ func New(cfg config.Config, log *slog.Logger) (*App, error) {
 	authServ := service.NewAuthService(userDal, tokenServ, log)
 	adminServ := service.NewAdminService(userDal, tokenServ, log)
 
-	httpServ := httpserver.New(cfg.Server, authServ, adminServ, tokenServ, log)
+	httpServ := httpserver.New(cfg.HttpServer, authServ, adminServ, tokenServ, log)
+	grpcServ := grpcserver.New(cfg.GrpcServer, authServ, adminServ, tokenServ, log)
 
 	return &App{
 		httpServer: httpServ,
+		grpcServer: grpcServ,
 		postgresDB: postgresDB,
 	}, nil
 }
 
 func (a *App) Start(log *slog.Logger) {
+	errs := make(chan error, 2)
+
 	go func() {
-		if err := a.httpServer.StartServer(); err != nil {
-			log.Error("Failed to start http server", logger.Err(err))
-			os.Exit(1)
+		if err := a.httpServer.StartServer(); err != nil && err != http.ErrServerClosed {
+			errs <- fmt.Errorf("http server: %w", err)
+		}
+	}()
+
+	go func() {
+		if err := a.grpcServer.StartServer(); err != nil {
+			errs <- fmt.Errorf("grpc server: %w", err)
 		}
 	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	s := <-stop
-	log.Info(fmt.Sprintf("Catched %s signal!!!", s.String()))
+	select {
+	case sig := <-stop:
+		log.Info(fmt.Sprintf("Caught signal: %s", sig))
+	case err := <-errs:
+		log.Error("Unexpected server error", logger.Err(err))
+	}
+
 	log.Info("Shutting down...")
 }
 
@@ -70,4 +86,6 @@ func (a *App) CleanUp(log *slog.Logger) {
 	if err := a.postgresDB.DB.Close(); err != nil {
 		log.Error("Failed to close database conn", logger.Err(err))
 	}
+
+	a.grpcServer.Close()
 }

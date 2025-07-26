@@ -14,14 +14,12 @@ import (
 
 type API struct {
 	server *http.Server
-	cfg    config.ServerConf
+	cfg    config.HttpServer
 
-	adminHandler *routers.AdminHandler
-	authHandler  *routers.AuthHandler
-	log          *slog.Logger
+	log *slog.Logger
 }
 
-func New(cfg config.ServerConf, authServ *service.AuthService, adminServ *service.AdminService, tokenServ *service.TokenService, log *slog.Logger) *API {
+func New(cfg config.HttpServer, authServ *service.AuthService, adminServ *service.AdminService, tokenServ *service.TokenService, log *slog.Logger) *API {
 	mux := http.NewServeMux()
 	SetSwagger(mux)
 
@@ -44,11 +42,9 @@ func New(cfg config.ServerConf, authServ *service.AuthService, adminServ *servic
 	}
 
 	return &API{
-		server:       serv,
-		cfg:          cfg,
-		adminHandler: adminH,
-		authHandler:  authH,
-		log:          log,
+		server: serv,
+		cfg:    cfg,
+		log:    log,
 	}
 }
 
@@ -82,5 +78,7 @@ func (a *API) StartServer() error {
 }
 
 func (a *API) Close() error {
+	a.log.Info("Shutting down http server...")
+
 	return a.server.Close()
 }

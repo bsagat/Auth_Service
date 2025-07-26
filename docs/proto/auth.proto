@@ -1,17 +1,31 @@
 syntax = "proto3";
-package authService;
+package auth.v1;
 
-service AuthServer{
+import "google/protobuf/timestamp.proto";
+
+option go_package = "auth/v1;authv1";
+
+message User {
+    int64 id = 1;
+    string name = 2;
+    string email = 3;
+    google.protobuf.Timestamp created_at = 4;
+    google.protobuf.Timestamp updated_at = 5;
+    bool isAdmin = 6;
+    string role = 7; 
+}
+
+service AuthService{
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Refresh(RefreshRequest) returns (RefreshResponse);
-    rpc Role(RoleRequest) returns (RoleResponse);
+    rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+}
 
+service AdminService{
     rpc GetUser(GetUserRequest) returns (GetUserResponse);
     rpc UpdateUser(UpdateRequest) returns (UpdateResponse);
     rpc DeleteUser(DeleteRequest) returns (DeleteResponse);
-
-    
 }
 
 message LoginRequest{
@@ -21,14 +35,15 @@ message LoginRequest{
 
 message LoginResponse{
     string message = 1;
-    string accessToken = 2;
-    string refreshToken = 3;
+    string access_token = 2;
+    string refresh_token = 3;
 }
 
 message RegisterRequest{
     string name = 1;
     string email = 2;
     string password = 3; 
+    string role = 4;
 }
 
 message RegisterResponse{
@@ -36,21 +51,48 @@ message RegisterResponse{
 }
 
 message RefreshRequest{
-    string accessToken = 1;
-    string refreshToken = 2;
+    string access_token = 1;
+    string refresh_token = 2;
 }
 
 message RefreshResponse{
-    string newAccessToken = 1;
-    string newRefreshToken = 2;
+    string new_access_token = 1;
+    string new_refresh_token = 2;
 }
 
-message RoleRequest{
+message WhoAmIRequest{
     string token = 1; 
 }
 
-message RoleResponse{
-    int64 id = 1;
-    string role = 2 
+message WhoAmIResponse{
+    User User = 1;
 }
 
+message GetUserRequest{
+    int64 user_id = 1;
+    string admin_token = 2; 
+}
+
+message GetUserResponse{
+    User user = 1;
+}
+
+message DeleteRequest{
+    int64 user_id = 1;
+    string admin_token = 2;  
+}
+
+message DeleteResponse{
+    string message = 1;
+}
+
+message UpdateRequest{
+    int64 user_id = 1;
+    string name = 2;
+    string role = 3;
+    string admin_token = 4;  
+}
+
+message UpdateResponse{
+    string message = 1;
+}
